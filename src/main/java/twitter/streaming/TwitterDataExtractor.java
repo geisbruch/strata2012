@@ -41,7 +41,8 @@ public class TwitterDataExtractor extends BaseBasicBolt{
 				if(entities.containsKey("hashtags")){
 					for(Object obj : (JSONArray)entities.get("hashtags")){
 						JSONObject hashObj = (JSONObject) obj;
-						collector.emit(new Values(input.getString(0),hashObj.get("text").toString()));
+						collector.emit(new Values(input.getString(0),hashObj.get("text").
+								toString().toLowerCase()));
 					}
 				}
 			}

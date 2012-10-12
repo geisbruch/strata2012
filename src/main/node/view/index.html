@@ -1,0 +1,52 @@
+<html>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+
+    <script>
+      var options = {
+          title: 'Strata Tweets',
+          vAxis: {title: 'Tweets',  titleTextStyle: {color: 'red'}},
+           animation:{
+               duration: 1000,
+               easing: 'out',
+         }
+      };  
+      var table
+      var hashs = io.connect('http://127.0.0.1:8080/hashs')
+      var points
+      var chart
+      hashs.on('connect', function () {
+        hashs.on('data',function(data){
+            var p = []
+            for(var i in data){
+                p.push([i,data[i]])
+            }
+            points = p 
+            redraw()
+        })
+      });
+      
+     google.load("visualization", "1", {packages:["columnchart"]});
+      google.setOnLoadCallback(drawChart);
+    
+      function drawChart() {
+        
+        chart = new google.visualization.ColumnChart(document.getElementById('chart_div'));
+      }
+
+      function redraw(){
+        if(points != undefined){
+            var d = ["Hashtags","Count"]
+            var total = []
+            total.push(d)
+            total = total.concat(points)
+            table = google.visualization.arrayToDataTable(total);
+            chart.draw(table, options);
+         }
+       }
+ 
+  </script>
+  <body>
+    <div id="chart_div" style="width: 1500px; height: 500px;"></div>
+  </body>
+</html>

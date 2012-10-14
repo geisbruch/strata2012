@@ -2,16 +2,11 @@ package twitter.streaming;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Pipeline;
 
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.BasicOutputCollector;
@@ -22,9 +17,10 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
 public class TwitterDataExtractor extends BaseBasicBolt{
+	private static final long serialVersionUID = -3025639777071957758L;
+	
 	static JSONParser jsonParser = new JSONParser();
 	Map<String, Integer> hashtags = new HashMap<String, Integer>();
-	private Jedis jedis;
 	
 	@Override
 	public void cleanup() {
@@ -53,10 +49,6 @@ public class TwitterDataExtractor extends BaseBasicBolt{
 
 	@Override
 	public void prepare(Map stormConf, TopologyContext context) {
-		String redisHost = (String) stormConf.get("redisHost");
-		Integer redisPort = ((Long) stormConf.get("redisPort")).intValue();
-		this.jedis = new Jedis(redisHost, redisPort);
-		this.jedis.connect();
 	}
 
 	@Override

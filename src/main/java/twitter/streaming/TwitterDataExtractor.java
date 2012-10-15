@@ -16,6 +16,8 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
 public class TwitterDataExtractor extends BaseBasicBolt{
+	private static final long serialVersionUID = -3025639777071957758L;
+	
 	static JSONParser jsonParser = new JSONParser();
 	
 	@Override

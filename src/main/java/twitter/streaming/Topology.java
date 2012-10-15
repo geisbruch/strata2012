@@ -2,6 +2,9 @@ package twitter.streaming;
 
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
+import backtype.storm.StormSubmitter;
+import backtype.storm.generated.AlreadyAliveException;
+import backtype.storm.generated.InvalidTopologyException;
 import backtype.storm.topology.TopologyBuilder;
 
 /**
@@ -12,8 +15,7 @@ import backtype.storm.topology.TopologyBuilder;
  *
  */
 public class Topology {
- 
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws InterruptedException, AlreadyAliveException, InvalidTopologyException {
 		TopologyBuilder builder = new TopologyBuilder();
 		builder.setSpout("tweets-collector", new ApiStreamingSpout(),1);
 		builder.setBolt("data-extractor", new TwitterDataExtractor()).
@@ -21,7 +23,6 @@ public class Topology {
 		builder.setBolt("tweets-saver", new TwitterHashtagsSaver()).
 			shuffleGrouping("data-extractor");
 		
-		LocalCluster cluster = new LocalCluster();
 		Config conf = new Config();
 		int i = 0;
 		conf.put("redisHost",args[i++]);
@@ -29,7 +30,12 @@ public class Topology {
 		conf.put("track", args[i++]);
 		conf.put("user", args[i++]);
 		conf.put("password", args[i++]);
-		
-		cluster.submitTopology("twitter-test", conf, builder.createTopology());
+		i++;
+		if(args.length <= i || args[i].equals("local")){
+			LocalCluster cluster = new LocalCluster();
+			cluster.submitTopology("twitter-hashtag-summarizer", conf, builder.createTopology());
+		}else{
+			StormSubmitter.submitTopology("twitter-hashtag-summarizer", conf, builder.createTopology());
+		}
 	}
 }

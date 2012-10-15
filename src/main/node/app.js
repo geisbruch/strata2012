@@ -29,17 +29,16 @@ redisClient.on("ready",function(){
         redisClient.hgetall("hashs",function(err,data){
             var count = 0
             var total = 0
-            for(var i in data){
+            for(var i in data)
                 data[i] = parseInt(data[i])
-                count += data[i]
-                total++
-            }
-            var threshold = count / total
+            var keys = Object.keys(data)
+            kyes = keys.sort(function(a,b){
+                return data[b] - data[a]
+            })
+            
             var toShow = {}
-            for(var i in data){
-                if(data[i]>threshold)
-                    toShow[i] = data[i]
-            }
+            for(var i = 0; i < Math.min(keys.length,10); i++)
+                toShow[keys[i]] = data[keys[i]]
             hashs = toShow;
         })
     },200)

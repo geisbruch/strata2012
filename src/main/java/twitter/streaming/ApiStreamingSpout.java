@@ -38,9 +38,9 @@ public class ApiStreamingSpout extends BaseRichSpout implements Runnable{
 	private UsernamePasswordCredentials credentials;
 	private BasicCredentialsProvider credentialProvider;
 
-	LinkedBlockingQueue<String> tweets = new LinkedBlockingQueue<String>();
 	static Logger LOG = Logger.getLogger(ApiStreamingSpout.class);
 	
+	LinkedBlockingQueue<String> tweets = new LinkedBlockingQueue<String>();
 	@Override
 	public void nextTuple() {
 		if(tweets.size()>0){

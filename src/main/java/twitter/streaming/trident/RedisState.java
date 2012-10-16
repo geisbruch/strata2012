@@ -35,7 +35,6 @@ public class RedisState implements IBackingMap<Long> {
 
 		String[] skeys = new String[keys.size()];
 		int i = 0;
-
 		for (List<Object> key : keys) {
 			skeys[i++] = (String) key.get(0);
 		}

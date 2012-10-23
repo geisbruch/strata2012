@@ -1,92 +1,83 @@
-package twitter.streaming;
+package strata.twitter.utils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
-import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.log4j.Logger;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
+import twitter.streaming.ApiStreamingSpout;
+
 import backtype.storm.spout.SpoutOutputCollector;
-import backtype.storm.task.TopologyContext;
-import backtype.storm.topology.OutputFieldsDeclarer;
-import backtype.storm.topology.base.BaseRichSpout;
-import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
 
-public class ApiStreamingSpout extends BaseRichSpout implements Runnable{
-
+public class TwitterReader implements Runnable {
 	static String STREAMING_API_URL="https://stream.twitter.com/1/statuses/filter.json?track=";
 	private String track;
 	private String user;
 	private String password;
 	private DefaultHttpClient client;
-	private SpoutOutputCollector collector;
 	private UsernamePasswordCredentials credentials;
 	private BasicCredentialsProvider credentialProvider;
 	static Logger LOG = Logger.getLogger(ApiStreamingSpout.class);
+	LinkedBlockingQueue<Tweet> tweets = new LinkedBlockingQueue<Tweet>();
+	Thread thr = null;
 	
-	LinkedBlockingQueue<String> tweets = new LinkedBlockingQueue<String>();
-	@Override
-	public void nextTuple() {
-		if(tweets.size()>0){
-			Collection<Object> tweetsToEmit = new ArrayList<Object>();
-			tweets.drainTo(tweetsToEmit);
-			for(Object tweet : tweetsToEmit){
-				collector.emit(new Values(track,tweet));
-			}
+
+	
+	public TwitterReader(String track, String user, String password) {
+		this.track = track;
+		this.user = user;
+		this.password = password;
+	}
+	
+	public void start() {
+		if(thr == null) {
+			thr = new Thread(this, "LoadTweets");
+			thr.start();
+		} else {
+			throw new IllegalStateException("Thread already started");
 		}
 	}
+	
+	protected Tweet parseTweet(String json) {
+		JSONParser jsonParser = new JSONParser();
 
-	@Override
-	public void open(Map conf, TopologyContext context,
-			SpoutOutputCollector collector) {
-		int spoutsSize = context.getComponentTasks(context.getThisComponentId()).size();
-		int myIdx = context.getThisTaskIndex();
-		String[] tracks = ((String) conf.get("track")).split(",");
-		StringBuffer tracksBuffer = new StringBuffer();
-		for(int i=0; i< tracks.length;i++){
-			if( i % spoutsSize == myIdx){
-				tracksBuffer.append(",");
-				tracksBuffer.append(tracks[i]);
-			}
+		JSONObject jsonObject = (JSONObject) jsonParser.parse(json);
+		
+		String orginalUser = null;
+		if(jsonObject.containsKey("user")) {
+			JSONObject userData = (JSONObject) jsonObject.get("user");
+			user = userData.get("name").toString();
 		}
 		
-		if(tracksBuffer.length() == 0)
-			throw new RuntimeException("No track found for spout" +
-					" [spoutsSize:"+spoutsSize+", tracks:"+tracks.length+"] the amount" +
-					" of tracks must be more then the spout paralellism");
+		Tweet ret = new Tweet(user);
 		
-		this.track =tracksBuffer.substring(1).toString();
-		
-		user = (String) conf.get("user");
-		password = (String) conf.get("password");
-		
-		credentials = new UsernamePasswordCredentials(user, password);
-		credentialProvider = new BasicCredentialsProvider();
-		credentialProvider.setCredentials(AuthScope.ANY, credentials);
-		this.collector = collector;
-		new Thread(this).start();
+		if(jsonObject.containsKey("entities")){
+			JSONObject entities = (JSONObject) jsonObject.get("entities");
+			if(entities.containsKey("hashtags")){
+				for(Object obj : (JSONArray)entities.get("hashtags")){
+					JSONObject hashObj = (JSONObject) obj;
+					
+				}
+			}
+		}
+		return null; // TODO implement
 	}
-
-	@Override
-	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		declarer.declare(new Fields("criteria","tweet"));
-	}
-
+	
 	@Override
 	public void run() {
 		/*
@@ -109,7 +100,8 @@ public class ApiStreamingSpout extends BaseRichSpout implements Runnable{
 						//Read line by line
 						while((in = reader.readLine())!=null){
 							//Parse and emit
-							tweets.add(in);
+							Tweet tweet = parseTweet(in);
+							tweets.add(tweet);
 						}
 					}
 				} catch (IOException e) {
@@ -129,4 +121,14 @@ public class ApiStreamingSpout extends BaseRichSpout implements Runnable{
 			}
 		}
 	}
+	
+	
+	public Tweet getNextTweet() {
+		try {
+			return tweets.poll(200, TimeUnit.MILLISECONDS);
+		} catch (InterruptedException e) {
+			return null;
+		}
+	}
+	
 }
